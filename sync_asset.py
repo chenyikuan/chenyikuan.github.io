@@ -4,7 +4,7 @@ import pandas as pd
 
 if sys.platform.startswith('win'):
     fn = 'D:/ws/qt_ws/worker002/daily_amount/nav_history_log.csv'
-    income_df = pd.read_csv('data/income.csv')
+    income_df = pd.read_csv('D:/ws/qt_ws/income.csv')
 else:
     fn = '/home/yikuan/ws/qt_ws/worker002/daily_amount/nav_history_log.csv'
     income_df = pd.read_csv('/home/yikuan/ws/qt_ws/income.csv')
