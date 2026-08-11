@@ -1,0 +1,809 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>宽量化</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            background: #0f0f14;
+            min-height: 100vh;
+            color: #ccc;
+        }
+
+        .container { max-width: 100%; margin: 0 auto; padding: 0; }
+
+        /* ---- 顶部曲线区 ---- */
+        .chart-section {
+            background: #16161e;
+            padding: 10px 4px 6px 4px;
+            border-bottom: 1px solid #222;
+        }
+
+        .chart-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 8px 6px;
+        }
+
+        .chart-header .logo {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .chart-header .logo-icon {
+            width: 22px;
+            height: 22px;
+            flex-shrink: 0;
+        }
+
+        .chart-header h1 {
+            font-size: 1.1rem;
+            font-weight: 700;
+            color: #e0e0e0;
+        }
+
+        .chart-header .tag {
+            font-size: 0.65rem;
+            color: #777;
+            background: #1e1e2a;
+            padding: 2px 8px;
+            border-radius: 10px;
+        }
+
+        .chart-header-right {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .help-btn {
+            width: 18px;
+            height: 18px;
+            border-radius: 50%;
+            border: 1px solid #555;
+            background: transparent;
+            color: #777;
+            font-size: 0.65rem;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            line-height: 1;
+            padding: 0;
+            transition: all 0.2s;
+        }
+
+        .help-btn:hover {
+            border-color: #00d9ff;
+            color: #00d9ff;
+        }
+
+        /* ---- Modal ---- */
+        .modal-overlay {
+            display: none;
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(0,0,0,0.6);
+            z-index: 1000;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .modal-overlay.show { display: flex; }
+
+        .modal {
+            background: #1a1a24;
+            border: 1px solid #333;
+            border-radius: 12px;
+            padding: 20px;
+            max-width: 420px;
+            width: 90%;
+            max-height: 80vh;
+            overflow-y: auto;
+        }
+
+        .modal h3 {
+            font-size: 1rem;
+            color: #e0e0e0;
+            margin-bottom: 12px;
+        }
+
+        .modal .indicator-item {
+            margin-bottom: 14px;
+        }
+
+        .modal .indicator-name {
+            font-size: 0.85rem;
+            color: #00d9ff;
+            font-weight: 600;
+            margin-bottom: 4px;
+        }
+
+        .modal .indicator-desc {
+            font-size: 0.72rem;
+            color: #888;
+            line-height: 1.6;
+        }
+
+        .modal .indicator-formula {
+            font-size: 0.7rem;
+            color: #666;
+            margin-top: 2px;
+            font-family: 'Courier New', monospace;
+        }
+
+        .modal-close {
+            float: right;
+            background: none;
+            border: none;
+            color: #777;
+            font-size: 1.2rem;
+            cursor: pointer;
+            padding: 0;
+            line-height: 1;
+        }
+
+        .modal-close:hover { color: #e0e0e0; }
+
+        #chart { width: 100%; height: 320px; }
+
+        /* ---- 指标卡片 ---- */
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(5, 1fr);
+            gap: 6px;
+            padding: 8px 8px;
+            background: #16161e;
+            border-bottom: 1px solid #222;
+        }
+
+        .stat-card {
+            text-align: center;
+            padding: 8px 4px;
+            background: #1a1a24;
+            border-radius: 8px;
+        }
+
+        .stat-label { font-size: 0.65rem; color: #777; margin-bottom: 3px; }
+
+        .stat-value { font-size: 1rem; font-weight: 700; }
+        .stat-value.positive { color: #ff6b6b; }
+        .stat-value.negative { color: #00ff88; }
+        .stat-value.neutral { color: #ccc; }
+
+        .stat-date { font-size: 0.7rem; color: #aaa; margin-top: 2px; font-weight: 500; }
+
+        .stat-percent { font-size: 0.65rem; margin-top: 2px; color: #777; }
+
+        /* ---- 操作区 ---- */
+        .actions-section {
+            padding: 10px 8px;
+        }
+
+        .quick-row {
+            display: flex;
+            gap: 6px;
+            margin-bottom: 10px;
+        }
+
+        .quick-row button {
+            flex: 1;
+            padding: 8px 0;
+            border: 1px solid #333;
+            border-radius: 6px;
+            background: #1a1a24;
+            color: #777;
+            font-size: 0.8rem;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .quick-row button.active {
+            background: #00d9ff;
+            color: #0f0f14;
+            border-color: #00d9ff;
+        }
+
+        .quick-row button:hover:not(.active) { border-color: #00d9ff; color: #00d9ff; }
+
+        .date-row {
+            display: flex;
+            gap: 6px;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+
+        .date-row span { color: #777; font-size: 0.75rem; flex-shrink: 0; }
+
+        .date-row input[type="date"] {
+            flex: 1;
+            padding: 7px 8px;
+            border: 1px solid #333;
+            border-radius: 6px;
+            background: #1a1a24;
+            color: #ccc;
+            font-size: 0.8rem;
+            min-width: 0;
+        }
+
+        .simulate-box {
+            background: #1a1a24;
+            border-radius: 8px;
+            padding: 10px;
+            margin-bottom: 10px;
+        }
+
+        .simulate-box.simulate-active {
+            background: #0f1a2e;
+            border: 1px solid #00d9ff;
+        }
+
+        .sim-row {
+            display: flex;
+            gap: 6px;
+            align-items: flex-end;
+        }
+
+        .sim-row input[type="date"],
+        .sim-row input[type="number"] {
+            flex: 1;
+            padding: 7px 8px;
+            border: 1px solid #333;
+            border-radius: 6px;
+            background: #1a1a24;
+            color: #ccc;
+            font-size: 0.8rem;
+            min-width: 0;
+        }
+
+        .sim-row button {
+            padding: 7px 14px;
+            border: 1px solid #333;
+            border-radius: 6px;
+            background: #1a1a24;
+            color: #777;
+            font-size: 0.8rem;
+            cursor: pointer;
+            white-space: nowrap;
+        }
+
+        .sim-row button.primary {
+            background: #00d9ff;
+            color: #0f0f14;
+            border-color: #00d9ff;
+        }
+
+        .simulate-hint {
+            font-size: 0.7rem;
+            color: #777;
+            margin-top: 6px;
+            display: block;
+        }
+
+        .bottom-row {
+            display: flex;
+            gap: 6px;
+        }
+
+        .bottom-row button {
+            flex: 1;
+            padding: 8px 0;
+            border: 1px solid #333;
+            border-radius: 6px;
+            background: #1a1a24;
+            color: #777;
+            font-size: 0.8rem;
+            cursor: pointer;
+        }
+
+        .data-info { text-align: center; color: #555; font-size: 0.65rem; margin-top: 12px; }
+        .loading { text-align: center; padding: 30px; color: #777; font-size: 0.85rem; }
+
+        @media (max-width: 480px) {
+            #chart { height: 260px; }
+            .stats { grid-template-columns: repeat(3, 1fr); }
+        }
+
+        @media (min-width: 481px) and (max-width: 768px) {
+            #chart { height: 300px; }
+        }
+
+        @media (min-width: 769px) {
+            .container { max-width: 800px; margin: 0 auto; }
+            #chart { height: 380px; }
+            .stats { padding: 10px 16px; }
+            .actions-section { padding: 14px 16px; }
+            .chart-section { padding: 14px 12px 8px; }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- 曲线区 -->
+        <div class="chart-section">
+            <div class="chart-header">
+                <div class="logo">
+                    <svg class="logo-icon" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <rect x="2" y="6" width="4" height="12" rx="1" fill="#00d9ff" opacity="0.6"/>
+                        <rect x="8" y="10" width="4" height="18" rx="1" fill="#00d9ff" opacity="0.75"/>
+                        <rect x="14" y="4" width="4" height="10" rx="1" fill="#00d9ff" opacity="0.5"/>
+                        <rect x="20" y="14" width="4" height="16" rx="1" fill="#00d9ff" opacity="0.85"/>
+                        <rect x="26" y="2" width="4" height="28" rx="1" fill="#00d9ff"/>
+                        <line x1="2" y1="30" x2="30" y2="30" stroke="#00d9ff" stroke-width="1.5" stroke-linecap="round"/>
+                    </svg>
+                    <h1>宽量化</h1>
+                </div>
+                <div class="chart-header-right">
+                    <button class="help-btn" id="helpBtn" title="指标说明">?</button>
+                    <span class="tag">收益率曲线</span>
+                </div>
+            </div>
+
+            <!-- 指标说明弹窗 -->
+            <div class="modal-overlay" id="modalOverlay">
+                <div class="modal">
+                    <button class="modal-close" id="modalClose">&times;</button>
+                    <h3>指标说明</h3>
+                    <div class="indicator-item">
+                        <div class="indicator-name">夏普比率 (Sharpe Ratio)</div>
+                        <div class="indicator-desc">衡量每单位总风险所获得的超额回报。值越高，风险调整后收益越好。</div>
+                        <div class="indicator-formula">(日均收益 / 日收益标准差) × √252</div>
+                    </div>
+                    <div class="indicator-item">
+                        <div class="indicator-name">卡玛比率 (Calmar Ratio)</div>
+                        <div class="indicator-desc">衡量年化收益与最大回撤之间的关系。值越高，说明在承受回撤风险时获得的回报越高。</div>
+                        <div class="indicator-formula">年化收益率 / 最大回撤</div>
+                    </div>
+                    <div class="indicator-item">
+                        <div class="indicator-name">索提诺比率 (Sortino Ratio)</div>
+                        <div class="indicator-desc">类似夏普比率，但只考虑下行波动（负收益），更精准地衡量下行风险调整后收益。</div>
+                        <div class="indicator-formula">(日均收益 / 下行标准差) × √252</div>
+                    </div>
+                    <div class="indicator-item">
+                        <div class="indicator-name">年化收益率</div>
+                        <div class="indicator-desc">将区间(含节假日)总收益率按复利折算为年化收益率，便于不同期限之间的收益对比。</div>
+                        <div class="indicator-formula">(1 + 区间收益率)^(365/区间天数) - 1</div>
+                    </div>
+                    <div class="indicator-item">
+                        <div class="indicator-name">最大回撤 (Max Drawdown)</div>
+                        <div class="indicator-desc">区间内净值从最高点到最低点的最大跌幅，反映最坏情况下的亏损幅度。</div>
+                        <div class="indicator-formula">max((峰值 - 谷值) / 峰值)</div>
+                    </div>
+                </div>
+            </div>
+            <div id="chart"></div>
+        </div>
+
+        <!-- 指标卡片 -->
+        <div class="stats">
+            <div class="stat-card">
+                <div class="stat-label">起始日期</div>
+                <div class="stat-date" id="startDateLabel">-</div>
+                <div class="stat-value neutral" id="startNav">-</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-label">终止日期</div>
+                <div class="stat-date" id="endDateLabel">-</div>
+                <div class="stat-value neutral" id="currentNav">-</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-label">当日收益</div>
+                <div class="stat-value" id="dailyReturn">-</div>
+                <div class="stat-percent" id="dailyReturnPercent">-</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-label">区间收益</div>
+                <div class="stat-value" id="totalReturn">-</div>
+                <div class="stat-percent" id="totalReturnPercent">-</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-label">最大回撤</div>
+                <div class="stat-value negative" id="maxDrawdown">-</div>
+            </div>
+        </div>
+
+        <!-- 操作区 -->
+        <div class="actions-section">
+            <div class="quick-row">
+                <button class="quick-btn active" data-range="all">全部</button>
+                <button class="quick-btn" data-range="1y">近1年</button>
+                <button class="quick-btn" data-range="ytd">今年来</button>
+                <button class="quick-btn" data-range="3m">近3个月</button>
+                <button class="quick-btn" data-range="1m">近1个月</button>
+            </div>
+
+            <div class="date-row">
+                <input type="date" id="startDate">
+                <span>至</span>
+                <input type="date" id="endDate">
+            </div>
+
+            <div class="simulate-box" id="simulatePanel">
+                <div class="sim-row">
+                    <input type="date" id="simDate" value="2026-04-29">
+                    <input type="number" id="simAmount" value="500000" placeholder="金额" min="0" step="0.01">
+                    <button class="primary" id="simBtn">计算</button>
+                    <button id="clearSimBtn" style="display:none;">清除</button>
+                </div>
+                <span class="simulate-hint" id="simHint">输入日期和金额，模拟在该日入金的净值曲线</span>
+            </div>
+
+            <div class="bottom-row">
+                <button id="refreshBtn">刷新数据</button>
+            </div>
+
+            <p class="data-info" id="dataInfo">数据来源: 宽量化</p>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/echarts@5.4.3/dist/echarts.min.js"></script>
+    <script>
+        let allData = [];
+        let chart = null;
+        let filteredData = [];
+        let maxDrawdownZone = { start: null, end: null, depth: 0 };
+        let simulation = { enabled: false, date: null, amount: 0, scale: 1 };
+
+        async function loadData() {
+            try {
+                const response = await fetch('./data/nav_history_net.csv');
+                if (!response.ok) throw new Error('数据文件不存在');
+                const text = await response.text();
+
+                const lines = text.trim().split('\n');
+                allData = [];
+                for (let i = 1; i < lines.length; i++) {
+                    const values = lines[i].split(',');
+                    if (values.length >= 2) {
+                        allData.push({ date: values[0], nav: parseFloat(values[1]) });
+                    }
+                }
+
+                allData.sort((a, b) => new Date(a.date + 'T00:00:00') - new Date(b.date + 'T00:00:00'));
+
+                filterData(allData[0].date, allData[allData.length - 1].date);
+                calculateMaxDrawdownZone();
+                updateStats();
+                renderChart();
+            } catch (error) {
+                document.getElementById('chart').innerHTML = '<div class="loading">暂无数据</div>';
+            }
+        }
+
+        function filterDataByRange(range) {
+            const latestDate = new Date(allData[allData.length - 1].date + 'T00:00:00');
+            const start = new Date(latestDate);
+
+            if (range === '1m') {
+                start.setMonth(start.getMonth() - 1);
+            } else if (range === '3m') {
+                start.setMonth(start.getMonth() - 3);
+            } else if (range === '1y') {
+                start.setFullYear(start.getFullYear() - 1);
+            } else if (range === 'ytd') {
+                start.setMonth(0);
+                start.setDate(1);
+            }
+
+            const startStr = start.toISOString().split('T')[0];
+            const endStr = latestDate.toISOString().split('T')[0];
+
+            filteredData = allData.filter(d => new Date(d.date + 'T00:00:00') >= start);
+            updateQuickBtnState(range);
+            document.getElementById('startDate').value = startStr;
+            document.getElementById('endDate').value = endStr;
+
+            if (simulation.enabled) resetSimulation();
+        }
+
+        function filterData(startDate, endDate) {
+            filteredData = allData.filter(d => {
+                const date = new Date(d.date + 'T00:00:00');
+                return date >= new Date(startDate + 'T00:00:00') && date <= new Date(endDate + 'T00:00:00');
+            });
+            updateQuickBtnState(null);
+            document.getElementById('startDate').value = startDate;
+            document.getElementById('endDate').value = endDate;
+
+            if (simulation.enabled) resetSimulation();
+        }
+
+        function updateQuickBtnState(range) {
+            document.querySelectorAll('.quick-btn[data-range]').forEach(btn => {
+                btn.classList.remove('active');
+                if (range !== null && btn.dataset.range == range) btn.classList.add('active');
+                if (range === null && btn.dataset.range === 'all') btn.classList.add('active');
+            });
+        }
+
+        function calculateMaxDrawdownZone() {
+            if (filteredData.length === 0) return;
+            let peakIdx = 0, maxDrawdown = 0, startIdx = 0, endIdx = 0;
+            for (let i = 0; i < filteredData.length; i++) {
+                if (filteredData[i].nav > filteredData[peakIdx].nav) peakIdx = i;
+                const drawdown = (filteredData[peakIdx].nav - filteredData[i].nav) / filteredData[peakIdx].nav;
+                if (drawdown > maxDrawdown) { maxDrawdown = drawdown; startIdx = peakIdx; endIdx = i; }
+            }
+            maxDrawdownZone = { start: startIdx, end: endIdx, depth: maxDrawdown };
+        }
+
+        function updateStats() {
+            if (filteredData.length === 0) return;
+            const startData = filteredData[0];
+            const currentData = filteredData[filteredData.length - 1];
+            const prevData = filteredData.length > 1 ? filteredData[filteredData.length - 2] : startData;
+
+            let displayStartNav, displayCurrentNav, displayDailyReturn, displayTotalReturn;
+
+            if (simulation.enabled) {
+                const simStartNav = startData.nav * simulation.scale;
+                const simEndNav = currentData.nav * simulation.scale;
+                const simPrevNav = prevData.nav * simulation.scale;
+
+                displayStartNav = formatNumber(simStartNav);
+                displayCurrentNav = formatNumber(simEndNav);
+                displayDailyReturn = simEndNav - simPrevNav;
+                displayTotalReturn = simEndNav - simStartNav;
+            } else {
+                displayStartNav = formatNumber(startData.nav);
+                displayCurrentNav = formatNumber(currentData.nav);
+                displayDailyReturn = currentData.nav - prevData.nav;
+                displayTotalReturn = currentData.nav - startData.nav;
+            }
+
+            document.getElementById('startDateLabel').textContent = startData.date;
+            document.getElementById('startNav').textContent = displayStartNav;
+
+            document.getElementById('endDateLabel').textContent = currentData.date;
+            document.getElementById('currentNav').textContent = displayCurrentNav;
+
+            const dailyReturnPercent = ((currentData.nav / prevData.nav) - 1) * 100;
+            const dailyEl = document.getElementById('dailyReturn');
+            dailyEl.textContent = (displayDailyReturn >= 0 ? '+' : '') + formatNumber(displayDailyReturn);
+            dailyEl.className = 'stat-value ' + (displayDailyReturn >= 0 ? 'positive' : 'negative');
+            document.getElementById('dailyReturnPercent').textContent = (dailyReturnPercent >= 0 ? '+' : '') + dailyReturnPercent.toFixed(2) + '%';
+
+            const totalReturnPercent = ((currentData.nav / startData.nav) - 1) * 100;
+            const returnEl = document.getElementById('totalReturn');
+            returnEl.textContent = (displayTotalReturn >= 0 ? '+' : '') + formatNumber(displayTotalReturn);
+            returnEl.className = 'stat-value ' + (displayTotalReturn >= 0 ? 'positive' : 'negative');
+            document.getElementById('totalReturnPercent').textContent = (totalReturnPercent >= 0 ? '+' : '') + totalReturnPercent.toFixed(2) + '%';
+            document.getElementById('maxDrawdown').textContent = '-' + (maxDrawdownZone.depth * 100).toFixed(2) + '%';
+        }
+
+        function formatNumber(num) {
+            return num.toLocaleString('zh-CN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+        }
+
+        function isMobile() {
+            return window.innerWidth <= 480;
+        }
+
+        function calcRatios() {
+            if (filteredData.length < 2) return { sharpe: 0, calmar: 0, sortino: 0 };
+            const dailyReturns = [];
+            for (let i = 1; i < filteredData.length; i++) {
+                dailyReturns.push(filteredData[i].nav / filteredData[i - 1].nav - 1);
+            }
+            const n = dailyReturns.length;
+            const mean = dailyReturns.reduce((a, b) => a + b, 0) / n;
+            const variance = dailyReturns.reduce((a, b) => a + Math.pow(b - mean, 2), 0) / n;
+            const std = Math.sqrt(variance);
+
+            const downReturns = dailyReturns.filter(r => r < 0);
+            const downVariance = downReturns.length > 0
+                ? downReturns.reduce((a, b) => a + Math.pow(b, 2), 0) / n
+                : variance;
+            const downStd = Math.sqrt(downVariance);
+
+            const totalReturn = filteredData[filteredData.length - 1].nav / filteredData[0].nav - 1;
+            const days = (new Date(filteredData[filteredData.length - 1].date + 'T00:00:00') - new Date(filteredData[0].date + 'T00:00:00')) / 86400000;
+            const annualReturn = Math.pow(1 + totalReturn, 365 / Math.max(days, 1)) - 1;
+
+            const sharpe = std > 0 ? (mean / std) * Math.sqrt(252) : 0;
+            const sortino = downStd > 0 ? (mean / downStd) * Math.sqrt(252) : 0;
+            const calmar = maxDrawdownZone.depth > 0 ? annualReturn / maxDrawdownZone.depth : 0;
+
+            return { sharpe, calmar, sortino, annualReturn };
+        }
+
+        function renderChart() {
+            const chartDom = document.getElementById('chart');
+            if (!chart) chart = echarts.init(chartDom);
+            if (filteredData.length === 0) { chartDom.innerHTML = '<div class="loading">暂无数据</div>'; return; }
+
+            const dates = filteredData.map(d => d.date);
+            const baseNav = filteredData[0].nav;
+            const mobile = isMobile();
+
+            const displayData = filteredData.map(d => ((d.nav / baseNav) - 1) * 100);
+            const yAxisFormatter = v => v.toFixed(2) + '%';
+
+            const markAreaData = maxDrawdownZone.end > maxDrawdownZone.start ? [[
+                { coord: [maxDrawdownZone.start] },
+                { coord: [maxDrawdownZone.end] }
+            ]] : [];
+
+            const ratios = calcRatios();
+            const graphicEls = [
+                {
+                    type: 'text', left: mobile ? 36 : '8%', top: 0,
+                    style: {
+                        text: `夏普 ${ratios.sharpe.toFixed(2)}  |  卡玛 ${ratios.calmar.toFixed(2)}  |  索提诺 ${ratios.sortino.toFixed(2)}  |  年化 ${(ratios.annualReturn * 100).toFixed(2)}%`,
+                        fill: '#999', fontSize: mobile ? 9 : 11,
+                        fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif'
+                    },
+                    z: 100
+                }
+            ];
+
+            const option = {
+                backgroundColor: 'transparent',
+                graphic: graphicEls,
+                grid: mobile
+                    ? { left: 36, right: 8, top: 36, bottom: 36 }
+                    : { left: '8%', right: '5%', top: '14%', bottom: '12%' },
+                tooltip: {
+                    trigger: 'axis',
+                    backgroundColor: 'rgba(20, 20, 30, 0.95)',
+                    borderColor: '#333',
+                    textStyle: { color: '#ccc', fontSize: 12 },
+                    formatter: function(params) {
+                        const idx = params[0].dataIndex;
+                        const data = filteredData[idx];
+                        let html = `<strong>${data.date}</strong><br/>`;
+                        html += `净值: ${formatNumber(data.nav)}<br/>`;
+                        html += `区间收益: ${((data.nav / baseNav - 1) * 100).toFixed(2)}%<br/>`;
+                        if (idx > 0) {
+                            const prevNav = filteredData[idx - 1].nav;
+                            html += `当日涨跌: ${((data.nav / prevNav - 1) * 100).toFixed(2)}%`;
+                        }
+                        return html;
+                    }
+                },
+                legend: { show: false },
+                xAxis: {
+                    type: 'category', data: dates,
+                    axisLine: { lineStyle: { color: '#333' } },
+                    axisLabel: { color: '#666', fontSize: mobile ? 9 : 10, rotate: 45 },
+                    boundaryGap: false
+                },
+                yAxis: {
+                    type: 'value', scale: true,
+                    name: mobile ? '' : '收益率',
+                    nameTextStyle: { color: '#666', fontSize: 10 },
+                    splitLine: { lineStyle: { color: '#222' } },
+                    axisLine: { lineStyle: { color: '#333' } },
+                    axisLabel: { color: '#666', fontSize: mobile ? 9 : 10, formatter: yAxisFormatter, margin: mobile ? 2 : 8 }
+                },
+                dataZoom: [
+                    { type: 'inside', start: 0, end: 100 },
+                    { type: 'slider', start: 0, end: 100, height: 14, bottom: mobile ? 24 : 30,
+                      borderColor: '#333', fillerColor: 'rgba(0, 217, 255, 0.15)',
+                      handleStyle: { color: '#00d9ff' } }
+                ],
+                series: [{
+                    name: '收益率',
+                    type: 'line', data: displayData, smooth: false, symbol: 'none',
+                    lineStyle: { width: 2, color: '#00d9ff' },
+                    areaStyle: {
+                        color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
+                            { offset: 0, color: 'rgba(0, 217, 255, 0.25)' },
+                            { offset: 1, color: 'rgba(0, 217, 255, 0.02)' }
+                        ])
+                    },
+                    itemStyle: { color: '#00d9ff' },
+                    markArea: {
+                        silent: true, data: markAreaData,
+                        itemStyle: { color: 'rgba(255, 107, 107, 0.1)' },
+                        label: {
+                            show: true, position: 'top', color: '#ff6b6b', fontSize: mobile ? 9 : 10,
+                            formatter: () => `最大回撤: -${(maxDrawdownZone.depth * 100).toFixed(2)}%`
+                        }
+                    }
+                }]
+            };
+            chart.setOption(option, { notMerge: true });
+        }
+
+        document.addEventListener('DOMContentLoaded', function() {
+            // 指标说明弹窗
+            const modalOverlay = document.getElementById('modalOverlay');
+            document.getElementById('helpBtn').addEventListener('click', () => modalOverlay.classList.add('show'));
+            document.getElementById('modalClose').addEventListener('click', () => modalOverlay.classList.remove('show'));
+            modalOverlay.addEventListener('click', (e) => { if (e.target === modalOverlay) modalOverlay.classList.remove('show'); });
+
+            document.querySelectorAll('.quick-btn[data-range]').forEach(btn => {
+                btn.addEventListener('click', function() {
+                    const range = this.dataset.range;
+                    if (range === 'all') filterData(allData[0].date, allData[allData.length - 1].date);
+                    else filterDataByRange(range);
+                    calculateMaxDrawdownZone(); updateStats(); renderChart();
+                });
+            });
+
+            document.getElementById('startDate').addEventListener('change', applyDateFilter);
+            document.getElementById('endDate').addEventListener('change', applyDateFilter);
+
+            function applyDateFilter() {
+                const start = document.getElementById('startDate').value;
+                const end = document.getElementById('endDate').value;
+                if (start && end && new Date(start) <= new Date(end)) {
+                    filterData(start, end);
+                    calculateMaxDrawdownZone(); updateStats(); renderChart();
+                }
+            }
+
+            document.getElementById('refreshBtn').addEventListener('click', loadData);
+            window.addEventListener('resize', () => { if (chart) chart.resize(); renderChart(); });
+            loadData();
+
+            const today = new Date().toISOString().split('T')[0];
+            document.getElementById('startDate').max = today;
+            document.getElementById('endDate').max = today;
+            document.getElementById('simDate').max = today;
+            document.getElementById('simDate').min = allData.length > 0 ? allData[0].date : '';
+
+            document.getElementById('simBtn').addEventListener('click', function() {
+                const simDate = document.getElementById('simDate').value;
+                const simAmount = parseFloat(document.getElementById('simAmount').value);
+
+                if (!simDate || isNaN(simAmount) || simAmount <= 0) {
+                    alert('请输入有效的日期和金额');
+                    return;
+                }
+
+                const simDataPoint = allData.find(d => d.date === simDate);
+                if (!simDataPoint) {
+                    alert('该日期没有净值数据');
+                    return;
+                }
+
+                simulation.enabled = true;
+                simulation.date = simDate;
+                simulation.amount = simAmount;
+                simulation.scale = simAmount / simDataPoint.nav;
+
+                const latestDate = allData[allData.length - 1].date;
+                filteredData = allData.filter(d => new Date(d.date + 'T00:00:00') >= new Date(simDate + 'T00:00:00'));
+                document.getElementById('startDate').value = simDate;
+                document.getElementById('endDate').value = latestDate;
+                updateQuickBtnState(null);
+
+                document.getElementById('simulatePanel').classList.add('simulate-active');
+                document.getElementById('simHint').innerHTML = `参考：${simDate} 入金 ${simAmount.toLocaleString()} → 当前 ${(simDataPoint.nav * simulation.scale).toLocaleString()}`;
+                document.getElementById('clearSimBtn').style.display = 'block';
+
+                calculateMaxDrawdownZone();
+                updateStats();
+                renderChart();
+            });
+
+            document.getElementById('clearSimBtn').addEventListener('click', function() {
+                resetSimulation();
+                updateStats();
+                renderChart();
+            });
+        });
+
+        function resetSimulation() {
+            simulation.enabled = false;
+            simulation.date = null;
+            simulation.amount = 0;
+            simulation.scale = 1;
+
+            document.getElementById('simulatePanel').classList.remove('simulate-active');
+            document.getElementById('simHint').innerHTML = '输入日期和金额，模拟在该日入金的净值曲线';
+            document.getElementById('clearSimBtn').style.display = 'none';
+            document.getElementById('simDate').value = '2026-04-29';
+            document.getElementById('simAmount').value = '500000';
+        }
+    </script>
+</body>
+</html>
