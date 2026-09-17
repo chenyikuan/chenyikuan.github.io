@@ -4,8 +4,8 @@ ws_dir='/home/yikuan/ws'
 
 echo "======== 1. 切换到 qt_ws 目录并更新 ========"
 cd $ws_dir/qt_ws || exit
-git checkout worker002
-git pull origin worker002
+git checkout worker_bigqmt
+git pull origin worker_bigqmt
 
 echo ""
 echo "======== 2. 切换到 github 仓库 ========"

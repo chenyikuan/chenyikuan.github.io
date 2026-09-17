@@ -2,11 +2,12 @@ import numpy as np
 import sys
 import pandas as pd
 
+woker_folder = 'worker_bigqmt'
 if sys.platform.startswith('win'):
-    fn = 'D:/ws/qt_ws/worker002/daily_amount/nav_history_log.csv'
+    fn = f'D:/ws/qt_ws/{woker_folder}/daily_amount/nav_history_log.csv'
     income_df = pd.read_csv('D:/ws/qt_ws/income.csv')
 else:
-    fn = '/home/yikuan/ws/qt_ws/worker002/daily_amount/nav_history_log.csv'
+    fn = f'/home/yikuan/ws/qt_ws/{woker_folder}/daily_amount/nav_history_log.csv'
     income_df = pd.read_csv('/home/yikuan/ws/qt_ws/income.csv')
 history_df = pd.read_csv(fn, header=0)
 history_df = history_df.drop_duplicates(subset=['date'], keep='last').reset_index(drop=True)
