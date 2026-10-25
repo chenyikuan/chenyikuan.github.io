@@ -2,7 +2,7 @@ import numpy as np
 import sys
 import pandas as pd
 
-woker_folder = 'worker_bigqmt'
+woker_folder = 'inner_python'
 if sys.platform.startswith('win'):
     fn = f'D:/ws/qt_ws/{woker_folder}/daily_amount/nav_history_log.csv'
     income_df = pd.read_csv('D:/ws/qt_ws/income.csv')

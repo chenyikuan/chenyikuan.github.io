@@ -5,8 +5,8 @@ setlocal enabledelayedexpansion
 echo ======== 1. 切换到 qt_ws 目录并更新 ========
 cd /d D:/ws/qt_ws
 if errorlevel 1 goto :error
-git checkout worker_bigqmt
-git pull origin worker_bigqmt
+git checkout inner_python
+git pull origin inner_python
 if errorlevel 1 goto :error
 
 echo.
